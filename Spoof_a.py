@@ -27,17 +27,17 @@ def setup_reports_folder():
 
 
 def generate_report(analysis, original_path, reports_dir):
-    """Genera el reporte en la carpeta Reportes"""
+    """Genera el reporte (sobrescribe si existe)"""
     original_name = os.path.splitext(os.path.basename(original_path))[0]
-    report_name = f"Reporte_{original_name}.txt"
+    report_name = f"Reporte_{original_name}.txt"  # <-- Sin timestamp
     report_path = os.path.join(reports_dir, report_name)
 
     with open(report_path, 'w', encoding='utf-8') as f:
-        # Encabezado
-        f.write("=== REPORTE DE ANÁLISIS ===\n")
+        # Encabezado con fecha/hora interna
+        f.write(
+            f"=== ÚLTIMO ANÁLISIS: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
         f.write(f"• Archivo: {os.path.basename(original_path)}\n")
-        f.write(f"• Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"• Ruta: {original_path}\n\n")
+        f.write(f"• Ruta completa: {original_path}\n\n")
 
         # Secciones
         for section, data in analysis.items():
@@ -46,9 +46,13 @@ def generate_report(analysis, original_path, reports_dir):
                 if isinstance(value, list):
                     f.write(f"{key}: ")
                     for item in value:
-                        f.write(f"{item}\n")
+                        # Une líneas en una sola
+                        clean_item = " ".join(item.splitlines())
+                        f.write(f"{clean_item}\n")
                 else:
-                    f.write(f"{key}: {value}\n")
+                    # Si no es lista, también normaliza
+                    clean_value = " ".join(value.splitlines())
+                    f.write(f"{key}: {clean_value}\n")
             f.write("\n")
 
     return report_path
@@ -243,7 +247,7 @@ def analyze_email(file_path):
 
 
 if __name__ == "__main__":
-    print("🔍 Analizador de Headers - v2.0")
+    print("🔍 Analizador de Headers - v2.1 (Sobrescribe reportes)")
 
     # Configuración inicial
     reports_dir = setup_reports_folder()
@@ -254,13 +258,13 @@ if __name__ == "__main__":
             # Análisis
             analysis = analyze_email(input_file)
 
-            # Generación de reporte
+            # Generación de reporte (sobrescribe)
             report_path = generate_report(analysis, input_file, reports_dir)
 
             # Resultado
             messagebox.showinfo(
                 "✅ Análisis completado",
-                f"Reporte guardado en:\n{report_path}"
+                f"Reporte actualizado en:\n{report_path}"
             )
 
             # Abrir carpeta (Windows/Mac/Linux)
