@@ -115,16 +115,57 @@ def analyze_email(file_path):
         if from_email != return_path_clean:
             spoofed = f"YES (From: {from_email} ≠ Return-Path: {return_path_clean})"
 
-    # ====== Source IPs ======
+    # ====== Source IPs and Domains ======
     ips_found = set()
+    ip_domains = {}
+
+    # 1. Extraer IPs de headers conocidos
     if 'X-Sender-IP' in headers:
         ips_found.add(headers['X-Sender-IP'])
+
     if 'Authentication-Results' in headers:
         spf_ip = re.search(r'sender IP is (\d+\.\d+\.\d+\.\d+)',
                            headers['Authentication-Results'])
         if spf_ip:
             ips_found.add(spf_ip.group(1))
-    source_ips = " | ".join(ips_found) if ips_found else "NO"
+
+    # 2. Analizar headers Received (solución para dict normal)
+    received_headers = []
+    if 'Received' in headers:
+        # Si hay múltiples Received, los unimos (pueden venir como lista o str)
+        if isinstance(headers['Received'], list):
+            received_headers = headers['Received']
+        else:
+            received_headers = [headers['Received']]
+
+    # Buscar también Received en mayúsculas/minúsculas alternativas
+    for key in headers:
+        if key.lower() == 'received' and key != 'Received':  # Si hay otra variante
+            if isinstance(headers[key], list):
+                received_headers.extend(headers[key])
+            else:
+                received_headers.append(headers[key])
+
+    # Procesamiento de los Received
+    for received in received_headers:
+        # Busca patrones como "from dominio.com (IP)"
+        matches = re.findall(
+            r'from\s+([a-zA-Z0-9.-]+)\s+[\(\[](\d+\.\d+\.\d+\.\d+)[\)\]]',
+            received
+        )
+        for domain, ip in matches:
+            ips_found.add(ip)
+            ip_domains[ip] = domain
+
+    # Formatear resultado
+    source_ips = []
+    for ip in ips_found:
+        if ip in ip_domains:
+            source_ips.append(f"{ip} ({ip_domains[ip]})")
+        else:
+            source_ips.append(ip)
+
+    source_ips_str = " | ".join(source_ips) if source_ips else "NO"
 
     # ====== Results ======
     results = {
@@ -136,7 +177,7 @@ def analyze_email(file_path):
         },
         "ANALYSIS RESULTS": {
             "Spoofed Email Account/Identity": spoofed,
-            "Source IP": source_ips,
+            "Source IP/Domain": source_ips,
             "Source Email Account": from_email,
             "Source Domain": extract_domain(return_path) if return_path != 'NO' else "NO",
             "Relay Server": "NO",
