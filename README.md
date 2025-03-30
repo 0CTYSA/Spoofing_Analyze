@@ -46,9 +46,9 @@ graph TD
 
 ## 📂 Estructura de archivos
 
-```
+```txt
 📦tu_directorio/
-├── 📜analizador.py
+├── 📜Spoof_a.py
 ├── 📜.gitignore
 └── 📂Reportes/
    ├── 📜Reporte_correo1.txt
