@@ -1,8 +1,57 @@
-import email
-from email import policy
 import re
+import os
 import extract_msg
+import tkinter as tk
+from email import policy
+from datetime import datetime
 from email.parser import BytesParser
+from tkinter import filedialog, messagebox
+
+
+def select_input_file():
+    """Abre ventana para seleccionar el archivo .eml o .msg"""
+    root = tk.Tk()
+    root.withdraw()
+    return filedialog.askopenfilename(
+        title="Seleccione el correo a analizar",
+        filetypes=[("Archivos de correo", "*.eml *.msg")]
+    )
+
+
+def setup_reports_folder():
+    """Crea la carpeta Reportes si no existe y devuelve su ruta"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    reports_dir = os.path.join(script_dir, "Reportes")
+    os.makedirs(reports_dir, exist_ok=True)
+    return reports_dir
+
+
+def generate_report(analysis, original_path, reports_dir):
+    """Genera el reporte en la carpeta Reportes"""
+    original_name = os.path.splitext(os.path.basename(original_path))[0]
+    report_name = f"Reporte_{original_name}.txt"
+    report_path = os.path.join(reports_dir, report_name)
+
+    with open(report_path, 'w', encoding='utf-8') as f:
+        # Encabezado
+        f.write("=== REPORTE DE ANÁLISIS ===\n")
+        f.write(f"• Archivo: {os.path.basename(original_path)}\n")
+        f.write(f"• Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"• Ruta: {original_path}\n\n")
+
+        # Secciones
+        for section, data in analysis.items():
+            f.write(f"=== {section.upper()} ===\n")
+            for key, value in data.items():
+                if isinstance(value, list):
+                    f.write(f"{key}: ")
+                    for item in value:
+                        f.write(f"{item}\n")
+                else:
+                    f.write(f"{key}: {value}\n")
+            f.write("\n")
+
+    return report_path
 
 
 def extract_domain(email_str):
@@ -194,13 +243,34 @@ def analyze_email(file_path):
 
 
 if __name__ == "__main__":
-    # Cambia por tu archivo
-    analysis = analyze_email(
-        "archive/They will know..eml")
-    print("=== EVIDENCE ===")
-    for key, value in analysis["EVIDENCE"].items():
-        print(f"{key}: {value}")
+    print("🔍 Analizador de Headers - v2.0")
 
-    print("\n=== ANALYSIS RESULTS ===")
-    for key, value in analysis["ANALYSIS RESULTS"].items():
-        print(f"{key}: {value}")
+    # Configuración inicial
+    reports_dir = setup_reports_folder()
+
+    # Selección de archivo
+    if input_file := select_input_file():
+        try:
+            # Análisis
+            analysis = analyze_email(input_file)
+
+            # Generación de reporte
+            report_path = generate_report(analysis, input_file, reports_dir)
+
+            # Resultado
+            messagebox.showinfo(
+                "✅ Análisis completado",
+                f"Reporte guardado en:\n{report_path}"
+            )
+
+            # Abrir carpeta (Windows/Mac/Linux)
+            if os.name == 'nt':
+                os.startfile(reports_dir)
+            else:
+                opener = 'open' if os.uname().sysname == 'Darwin' else 'xdg-open'
+                os.system(f'{opener} "{reports_dir}"')
+
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"Falló el análisis:\n{str(e)}")
+    else:
+        print("Operación cancelada")
