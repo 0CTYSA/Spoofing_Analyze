@@ -27,7 +27,7 @@ def setup_reports_folder():
 
 
 def generate_report(analysis, original_path, reports_dir):
-    """Genera el reporte (sobrescribe si existe)"""
+    """Genera el reporte"""
     original_name = os.path.splitext(os.path.basename(original_path))[0]
     report_name = f"Reporte_{original_name}.txt"  # <-- Sin timestamp
     report_path = os.path.join(reports_dir, report_name)
